@@ -1,135 +1,320 @@
+'use client';
+
+import { useState } from 'react';
 import StatusBadge from '../components/StatusBadge';
 import DataTable from '../components/DataTable';
 
-// Package data with full features
-const packages = [
+// Initial package data
+const initialPackages = [
     {
+        id: 1,
         name: 'Basic',
-        price: '$9',
-        period: '/month',
-        features: {
-            users: 5,
-            products: 100,
-            invoices: 500,
-            reporting: 'Basic',
-        },
+        price: 9,
+        features: { users: 5, products: 100, invoices: 500, reporting: 'Basic' },
         subscribers: 45,
     },
     {
+        id: 2,
         name: 'Pro',
-        price: '$29',
-        period: '/month',
+        price: 29,
         popular: true,
-        features: {
-            users: 15,
-            products: 1000,
-            invoices: 2000,
-            reporting: 'Advanced',
-        },
+        features: { users: 15, products: 1000, invoices: 2000, reporting: 'Advanced' },
         subscribers: 32,
     },
     {
+        id: 3,
         name: 'Premium',
-        price: '$59',
-        period: '/month',
-        features: {
-            users: 50,
-            products: 10000,
-            invoices: 'Unlimited',
-            reporting: 'Full Analytics',
-        },
+        price: 59,
+        features: { users: 50, products: 10000, invoices: 'Unlimited', reporting: 'Full Analytics' },
         subscribers: 18,
     },
     {
+        id: 4,
         name: 'Enterprise',
-        price: '$99',
-        period: '/month',
+        price: 99,
         enterprise: true,
-        features: {
-            users: 'Unlimited',
-            products: 'Unlimited',
-            invoices: 'Unlimited',
-            reporting: 'Priority + Custom',
-        },
+        features: { users: 'Unlimited', products: 'Unlimited', invoices: 'Unlimited', reporting: 'Priority + Custom' },
         subscribers: 8,
     },
 ];
 
-// Active subscriptions with detailed info
+// Active subscriptions data
 const subscriptions = [
-    { id: 1, shop: 'TechMart Electronics', package: 'Premium', expiry: 'Jan 15, 2025', daysLeft: 32, autoRenew: true, status: 'active', lastPayment: 'Dec 15, 2024' },
-    { id: 2, shop: 'Fashion Hub', package: 'Pro', expiry: 'Jan 20, 2025', daysLeft: 37, autoRenew: true, status: 'active', lastPayment: 'Dec 20, 2024' },
-    { id: 3, shop: 'Green Grocers', package: 'Basic', expiry: 'Dec 25, 2024', daysLeft: 11, autoRenew: false, status: 'expiring', lastPayment: 'Nov 25, 2024' },
-    { id: 4, shop: 'Book Haven', package: 'Pro', expiry: 'Dec 18, 2024', daysLeft: 4, autoRenew: true, status: 'expiring', lastPayment: 'Nov 18, 2024' },
-    { id: 5, shop: 'Sports Zone', package: 'Premium', expiry: 'Feb 1, 2025', daysLeft: 49, autoRenew: true, status: 'active', lastPayment: 'Jan 1, 2025' },
-    { id: 6, shop: 'Gadget Galaxy', package: 'Enterprise', expiry: 'Dec 10, 2024', daysLeft: -4, autoRenew: false, status: 'expired', lastPayment: 'Nov 10, 2024' },
+    { id: 1, shop: 'TechMart Electronics', package: 'Premium', expiry: 'Jan 15, 2025', daysLeft: 32, autoRenew: true, status: 'active' },
+    { id: 2, shop: 'Fashion Hub', package: 'Pro', expiry: 'Jan 20, 2025', daysLeft: 37, autoRenew: true, status: 'active' },
+    { id: 3, shop: 'Green Grocers', package: 'Basic', expiry: 'Dec 25, 2024', daysLeft: 11, autoRenew: false, status: 'expiring' },
+    { id: 4, shop: 'Book Haven', package: 'Pro', expiry: 'Dec 18, 2024', daysLeft: 4, autoRenew: true, status: 'expiring' },
+    { id: 5, shop: 'Sports Zone', package: 'Premium', expiry: 'Feb 1, 2025', daysLeft: 49, autoRenew: true, status: 'active' },
+    { id: 6, shop: 'Gadget Galaxy', package: 'Enterprise', expiry: 'Dec 10, 2024', daysLeft: -4, autoRenew: false, status: 'expired' },
 ];
 
-// Upcoming renewals
 const upcomingRenewals = [
     { shop: 'Book Haven', package: 'Pro', date: 'Dec 18, 2024', daysLeft: 4, amount: '$29' },
     { shop: 'Green Grocers', package: 'Basic', date: 'Dec 25, 2024', daysLeft: 11, amount: '$9' },
     { shop: 'TechMart Electronics', package: 'Premium', date: 'Jan 15, 2025', daysLeft: 32, amount: '$59' },
 ];
 
-// Failed payments
 const failedPayments = [
     { shop: 'Gadget Galaxy', package: 'Enterprise', date: 'Dec 10, 2024', amount: '$99', attempts: 3 },
     { shop: 'Coffee Corner', package: 'Basic', date: 'Dec 8, 2024', amount: '$9', attempts: 2 },
 ];
 
-const subColumns = [
-    { header: 'Shop', accessor: 'shop' },
-    {
-        header: 'Package', render: (row) => (
-            <span className={`px-2 py-1 rounded text-xs font-medium ${row.package === 'Enterprise' ? 'bg-purple-100 text-purple-700' :
-                row.package === 'Premium' ? 'bg-blue-100 text-blue-700' :
-                    row.package === 'Pro' ? 'bg-green-100 text-green-700' :
-                        'bg-gray-100 text-gray-700'
-                }`}>
-                {row.package}
-            </span>
-        )
-    },
-    { header: 'Expiry Date', accessor: 'expiry' },
-    {
-        header: 'Days Left', render: (row) => (
-            <span className={`font-medium ${row.daysLeft <= 0 ? 'text-red-600' :
-                row.daysLeft <= 7 ? 'text-amber-600' :
-                    'text-gray-700'
-                }`}>
-                {row.daysLeft <= 0 ? 'Expired' : `${row.daysLeft} days`}
-            </span>
-        )
-    },
-    {
-        header: 'Auto Renew',
-        render: (row) => (
-            <div className="flex items-center gap-2">
-                <div className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${row.autoRenew ? 'bg-[#673DE6]' : 'bg-gray-300'}`}>
-                    <div className={`absolute w-4 h-4 bg-white rounded-full top-0.5 transition-transform ${row.autoRenew ? 'left-5' : 'left-0.5'}`}></div>
+// Package Modal Component
+function PackageModal({ isOpen, onClose, onSave, editPackage }) {
+    const [formData, setFormData] = useState(editPackage || {
+        name: '',
+        price: '',
+        features: { users: '', products: '', invoices: '', reporting: 'Basic' },
+    });
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onSave({
+            ...formData,
+            id: editPackage?.id || Date.now(),
+            price: Number(formData.price),
+            subscribers: editPackage?.subscribers || 0,
+        });
+        onClose();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-gray-900">
+                        {editPackage ? 'Edit Package' : 'Create Package'}
+                    </h2>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+                        <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
-                <span className="text-sm text-gray-500">{row.autoRenew ? 'On' : 'Off'}</span>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Package Name</label>
+                        <input
+                            type="text"
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#673DE6]/20 focus:border-[#673DE6]"
+                            placeholder="e.g. Pro Plus"
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Price ($/month)</label>
+                        <input
+                            type="number"
+                            value={formData.price}
+                            onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#673DE6]/20 focus:border-[#673DE6]"
+                            placeholder="29"
+                            required
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Users</label>
+                            <input
+                                type="text"
+                                value={formData.features.users}
+                                onChange={(e) => setFormData({ ...formData, features: { ...formData.features, users: e.target.value } })}
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#673DE6]/20 focus:border-[#673DE6]"
+                                placeholder="10 or Unlimited"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Products</label>
+                            <input
+                                type="text"
+                                value={formData.features.products}
+                                onChange={(e) => setFormData({ ...formData, features: { ...formData.features, products: e.target.value } })}
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#673DE6]/20 focus:border-[#673DE6]"
+                                placeholder="1000"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Invoices/mo</label>
+                            <input
+                                type="text"
+                                value={formData.features.invoices}
+                                onChange={(e) => setFormData({ ...formData, features: { ...formData.features, invoices: e.target.value } })}
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#673DE6]/20 focus:border-[#673DE6]"
+                                placeholder="2000 or Unlimited"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Reporting</label>
+                            <select
+                                value={formData.features.reporting}
+                                onChange={(e) => setFormData({ ...formData, features: { ...formData.features, reporting: e.target.value } })}
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#673DE6]/20 focus:border-[#673DE6]"
+                            >
+                                <option value="Basic">Basic</option>
+                                <option value="Advanced">Advanced</option>
+                                <option value="Full Analytics">Full Analytics</option>
+                                <option value="Priority + Custom">Priority + Custom</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-4">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            className="flex-1 px-4 py-2.5 bg-[#673DE6] text-white rounded-lg font-medium hover:bg-[#5a35cc] transition-colors"
+                        >
+                            {editPackage ? 'Save Changes' : 'Create Package'}
+                        </button>
+                    </div>
+                </form>
             </div>
-        )
-    },
-    {
-        header: 'Status',
-        render: (row) => <StatusBadge status={row.status} />
-    },
-    {
-        header: 'Actions',
-        render: () => (
-            <button className="text-[#673DE6] hover:underline text-sm font-medium">
-                Manage
-            </button>
-        )
-    },
-];
+        </div>
+    );
+}
+
+// Delete Confirmation Modal
+function DeleteModal({ isOpen, onClose, onConfirm, packageName }) {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl">
+                <div className="text-center">
+                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Package</h3>
+                    <p className="text-gray-500 mb-6">
+                        Are you sure you want to delete <span className="font-semibold text-gray-700">{packageName}</span>? This action cannot be undone.
+                    </p>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={onClose}
+                            className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={onConfirm}
+                            className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 export default function SubscriptionsPage() {
+    const [packages, setPackages] = useState(initialPackages);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingPackage, setEditingPackage] = useState(null);
+    const [deleteModal, setDeleteModal] = useState({ isOpen: false, package: null });
+
+    const handleCreatePackage = () => {
+        setEditingPackage(null);
+        setIsModalOpen(true);
+    };
+
+    const handleEditPackage = (pkg) => {
+        setEditingPackage(pkg);
+        setIsModalOpen(true);
+    };
+
+    const handleSavePackage = (packageData) => {
+        if (editingPackage) {
+            setPackages(packages.map(p => p.id === packageData.id ? packageData : p));
+        } else {
+            setPackages([...packages, packageData]);
+        }
+    };
+
+    const handleDeletePackage = (pkg) => {
+        setDeleteModal({ isOpen: true, package: pkg });
+    };
+
+    const confirmDelete = () => {
+        setPackages(packages.filter(p => p.id !== deleteModal.package.id));
+        setDeleteModal({ isOpen: false, package: null });
+    };
+
+    const subColumns = [
+        { header: 'Shop', accessor: 'shop' },
+        {
+            header: 'Package', render: (row) => (
+                <span className={`px-2 py-1 rounded text-xs font-medium ${row.package === 'Enterprise' ? 'bg-purple-100 text-purple-700' :
+                    row.package === 'Premium' ? 'bg-blue-100 text-blue-700' :
+                        row.package === 'Pro' ? 'bg-green-100 text-green-700' :
+                            'bg-gray-100 text-gray-700'
+                    }`}>
+                    {row.package}
+                </span>
+            )
+        },
+        { header: 'Expiry Date', accessor: 'expiry' },
+        {
+            header: 'Days Left', render: (row) => (
+                <span className={`font-medium ${row.daysLeft <= 0 ? 'text-red-600' :
+                    row.daysLeft <= 7 ? 'text-amber-600' : 'text-gray-700'
+                    }`}>
+                    {row.daysLeft <= 0 ? 'Expired' : `${row.daysLeft} days`}
+                </span>
+            )
+        },
+        {
+            header: 'Auto Renew',
+            render: (row) => (
+                <div className="flex items-center gap-2">
+                    <div className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${row.autoRenew ? 'bg-[#673DE6]' : 'bg-gray-300'}`}>
+                        <div className={`absolute w-4 h-4 bg-white rounded-full top-0.5 transition-transform ${row.autoRenew ? 'left-5' : 'left-0.5'}`}></div>
+                    </div>
+                    <span className="text-sm text-gray-500">{row.autoRenew ? 'On' : 'Off'}</span>
+                </div>
+            )
+        },
+        { header: 'Status', render: (row) => <StatusBadge status={row.status} /> },
+        { header: 'Actions', render: () => <button className="text-[#673DE6] hover:underline text-sm font-medium">Manage</button> },
+    ];
+
     return (
         <div className="space-y-6">
+            {/* Package Modal */}
+            <PackageModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSave={handleSavePackage}
+                editPackage={editingPackage}
+            />
+
+            {/* Delete Modal */}
+            <DeleteModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, package: null })}
+                onConfirm={confirmDelete}
+                packageName={deleteModal.package?.name}
+            />
+
             {/* Package Cards */}
             <div>
                 <div className="flex items-center justify-between mb-4">
@@ -137,7 +322,10 @@ export default function SubscriptionsPage() {
                         <h2 className="text-lg font-semibold text-gray-900">Subscription Packages</h2>
                         <p className="text-sm text-gray-500">Manage and configure subscription tiers</p>
                     </div>
-                    <button className="px-4 py-2 bg-[#673DE6] text-white rounded-lg text-sm font-medium hover:bg-[#5a35cc] transition-colors flex items-center gap-2">
+                    <button
+                        onClick={handleCreatePackage}
+                        className="px-4 py-2 bg-[#673DE6] text-white rounded-lg text-sm font-medium hover:bg-[#5a35cc] transition-colors flex items-center gap-2"
+                    >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
@@ -145,9 +333,9 @@ export default function SubscriptionsPage() {
                     </button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {packages.map((pkg, idx) => (
+                    {packages.map((pkg) => (
                         <div
-                            key={idx}
+                            key={pkg.id}
                             className="card p-6 relative"
                             style={pkg.enterprise ? { background: 'linear-gradient(to bottom right, #673DE6, #9333ea)' } : {}}
                         >
@@ -161,10 +349,10 @@ export default function SubscriptionsPage() {
                             </h3>
                             <div className="mt-3">
                                 <span style={{ color: pkg.enterprise ? '#ffffff' : '#111827' }} className="text-3xl font-bold">
-                                    {pkg.price}
+                                    ${pkg.price}
                                 </span>
                                 <span style={{ color: pkg.enterprise ? 'rgba(255,255,255,0.8)' : '#6b7280' }}>
-                                    {pkg.period}
+                                    /month
                                 </span>
                             </div>
 
@@ -213,9 +401,22 @@ export default function SubscriptionsPage() {
                                     <p style={{ color: pkg.enterprise ? 'rgba(255,255,255,0.8)' : '#6b7280' }} className="text-sm">
                                         {pkg.subscribers} subscribers
                                     </p>
-                                    <button style={{ color: pkg.enterprise ? '#ffffff' : '#673DE6' }} className="text-sm font-medium hover:opacity-80">
-                                        Edit
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => handleEditPackage(pkg)}
+                                            style={{ color: pkg.enterprise ? '#ffffff' : '#673DE6' }}
+                                            className="text-sm font-medium hover:opacity-80"
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeletePackage(pkg)}
+                                            style={{ color: pkg.enterprise ? '#fca5a5' : '#ef4444' }}
+                                            className="text-sm font-medium hover:opacity-80"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -249,7 +450,7 @@ export default function SubscriptionsPage() {
                 <DataTable columns={subColumns} data={subscriptions} />
             </div>
 
-            {/* Bottom Grid: Upcoming Renewals & Failed Payments */}
+            {/* Bottom Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Upcoming Renewals */}
                 <div className="card">
@@ -279,11 +480,6 @@ export default function SubscriptionsPage() {
                                 </div>
                             </div>
                         ))}
-                    </div>
-                    <div className="px-6 py-3 border-t border-gray-100 bg-gray-50">
-                        <button className="text-sm text-[#673DE6] font-medium hover:underline">
-                            View all renewals →
-                        </button>
                     </div>
                 </div>
 
@@ -329,20 +525,10 @@ export default function SubscriptionsPage() {
                             </div>
                         ))}
                     </div>
-                    {failedPayments.length === 0 && (
-                        <div className="px-6 py-8 text-center">
-                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                            </div>
-                            <p className="text-gray-500">No failed payments</p>
-                        </div>
-                    )}
                 </div>
             </div>
 
-            {/* Package Expiration Reminders */}
+            {/* Expiration Reminders */}
             <div className="card p-6">
                 <div className="flex items-center justify-between mb-4">
                     <div>
