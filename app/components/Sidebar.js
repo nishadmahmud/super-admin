@@ -1,6 +1,8 @@
 'use client';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { getUser } from '../lib/api';
 
 const navItems = [
   {
@@ -30,10 +32,25 @@ const navItems = [
       </svg>
     ),
   },
+  {
+    name: 'Profile',
+    href: '/profile',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+      </svg>
+    ),
+  },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const userData = getUser();
+    setUser(userData);
+  }, []);
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-[260px] bg-[#1a1625] flex flex-col z-50">
@@ -56,11 +73,10 @@ export default function Sidebar() {
               <li key={item.name}>
                 <Link
                   href={item.href}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                    isActive
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${isActive
                       ? 'bg-[#673DE6] text-white'
                       : 'text-[#a0a0b0] hover:bg-[#2a2535] hover:text-white'
-                  }`}
+                    }`}
                 >
                   {item.icon}
                   <span className="font-medium">{item.name}</span>
@@ -71,17 +87,31 @@ export default function Sidebar() {
         </ul>
       </nav>
 
-      {/* Footer */}
+      {/* User Profile Footer */}
       <div className="p-4 border-t border-white/10">
-        <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-9 h-9 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-            <span className="text-white text-sm font-medium">A</span>
-          </div>
+        <Link href="/profile" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#2a2535] transition-colors">
+          {user?.profile_pic ? (
+            <img
+              src={user.profile_pic}
+              alt={user.owner_name || 'User'}
+              className="w-10 h-10 rounded-full object-cover border-2 border-[#673DE6]"
+            />
+          ) : (
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+              <span className="text-white text-sm font-medium">
+                {user?.owner_name?.charAt(0) || 'A'}
+              </span>
+            </div>
+          )}
           <div className="flex-1 min-w-0">
-            <p className="text-white text-sm font-medium truncate">Admin User</p>
-            <p className="text-[#a0a0b0] text-xs truncate">admin@saas.com</p>
+            <p className="text-white text-sm font-medium truncate">
+              {user?.owner_name || 'Admin User'}
+            </p>
+            <p className="text-[#a0a0b0] text-xs truncate">
+              {user?.outlet_name || user?.email || 'admin@saas.com'}
+            </p>
           </div>
-        </div>
+        </Link>
       </div>
     </aside>
   );

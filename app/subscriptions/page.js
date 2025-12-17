@@ -203,25 +203,30 @@ export default function SubscriptionsPage() {
         setLoading(true);
         try {
             const response = await getSubscriptionsList();
-            if (response && response.data) {
+            // API returns array directly, not wrapped in { data: [] }
+            const subscriptionData = Array.isArray(response) ? response : (response?.data || []);
+
+            if (subscriptionData.length > 0) {
                 // Transform API data to match our package structure
-                const apiPackages = response.data.map((sub, index) => ({
+                const apiPackages = subscriptionData.map((sub, index) => ({
                     id: sub.id || index + 1,
-                    name: sub.name || sub.package_name || `Package ${index + 1}`,
-                    price: sub.price || sub.amount || 0,
+                    name: sub.plan_name || sub.name || `Package ${index + 1}`,
+                    description: sub.description || '',
+                    price: parseFloat(sub.price_en) || parseFloat(sub.price_bd) || sub.price || 0,
+                    priceBD: parseFloat(sub.price_bd) || 0,
+                    billingCycle: sub.billing_cycle || 'monthly',
                     features: {
-                        users: sub.users || sub.max_users || 'N/A',
-                        products: sub.products || sub.max_products || 'N/A',
-                        invoices: sub.invoices || sub.max_invoices || 'N/A',
-                        reporting: sub.reporting || sub.report_type || 'Basic',
+                        users: sub.users || sub.max_users || 'Unlimited',
+                        products: sub.products || sub.max_products || 'Unlimited',
+                        invoices: sub.invoices || sub.max_invoices || 'Unlimited',
+                        reporting: sub.reporting || sub.report_type || 'Full',
                     },
                     subscribers: sub.subscribers || sub.subscriber_count || 0,
-                    popular: sub.popular || false,
-                    enterprise: sub.enterprise || sub.is_enterprise || false,
+                    popular: sub.plan_name === 'Premium' || sub.popular || false,
+                    enterprise: sub.plan_name === 'Enterprise' || sub.enterprise || false,
+                    status: sub.status,
                 }));
-                if (apiPackages.length > 0) {
-                    setPackages(apiPackages);
-                }
+                setPackages(apiPackages);
             }
         } catch (err) {
             console.error('Failed to fetch subscriptions:', err);
@@ -360,12 +365,17 @@ export default function SubscriptionsPage() {
                             <h3 style={{ color: pkg.enterprise ? '#ffffff' : '#111827' }} className="text-lg font-bold">
                                 {pkg.name}
                             </h3>
+                            {pkg.description && (
+                                <p style={{ color: pkg.enterprise ? 'rgba(255,255,255,0.7)' : '#6b7280' }} className="text-sm mt-1">
+                                    {pkg.description}
+                                </p>
+                            )}
                             <div className="mt-3">
                                 <span style={{ color: pkg.enterprise ? '#ffffff' : '#111827' }} className="text-3xl font-bold">
                                     ${pkg.price}
                                 </span>
                                 <span style={{ color: pkg.enterprise ? 'rgba(255,255,255,0.8)' : '#6b7280' }}>
-                                    /month
+                                    /{pkg.billingCycle || 'month'}
                                 </span>
                             </div>
 
