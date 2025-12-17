@@ -1,63 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import StatusBadge from '../components/StatusBadge';
 import DataTable from '../components/DataTable';
+import { getSubscriptionsList, getToken } from '../lib/api';
 
-// Initial package data
-const initialPackages = [
-    {
-        id: 1,
-        name: 'Basic',
-        price: 9,
-        features: { users: 5, products: 100, invoices: 500, reporting: 'Basic' },
-        subscribers: 45,
-    },
-    {
-        id: 2,
-        name: 'Pro',
-        price: 29,
-        popular: true,
-        features: { users: 15, products: 1000, invoices: 2000, reporting: 'Advanced' },
-        subscribers: 32,
-    },
-    {
-        id: 3,
-        name: 'Premium',
-        price: 59,
-        features: { users: 50, products: 10000, invoices: 'Unlimited', reporting: 'Full Analytics' },
-        subscribers: 18,
-    },
-    {
-        id: 4,
-        name: 'Enterprise',
-        price: 99,
-        enterprise: true,
-        features: { users: 'Unlimited', products: 'Unlimited', invoices: 'Unlimited', reporting: 'Priority + Custom' },
-        subscribers: 8,
-    },
-];
-
-// Active subscriptions data
-const subscriptions = [
-    { id: 1, shop: 'TechMart Electronics', package: 'Premium', expiry: 'Jan 15, 2025', daysLeft: 32, autoRenew: true, status: 'active' },
-    { id: 2, shop: 'Fashion Hub', package: 'Pro', expiry: 'Jan 20, 2025', daysLeft: 37, autoRenew: true, status: 'active' },
-    { id: 3, shop: 'Green Grocers', package: 'Basic', expiry: 'Dec 25, 2024', daysLeft: 11, autoRenew: false, status: 'expiring' },
-    { id: 4, shop: 'Book Haven', package: 'Pro', expiry: 'Dec 18, 2024', daysLeft: 4, autoRenew: true, status: 'expiring' },
-    { id: 5, shop: 'Sports Zone', package: 'Premium', expiry: 'Feb 1, 2025', daysLeft: 49, autoRenew: true, status: 'active' },
-    { id: 6, shop: 'Gadget Galaxy', package: 'Enterprise', expiry: 'Dec 10, 2024', daysLeft: -4, autoRenew: false, status: 'expired' },
-];
-
-const upcomingRenewals = [
-    { shop: 'Book Haven', package: 'Pro', date: 'Dec 18, 2024', daysLeft: 4, amount: '$29' },
-    { shop: 'Green Grocers', package: 'Basic', date: 'Dec 25, 2024', daysLeft: 11, amount: '$9' },
-    { shop: 'TechMart Electronics', package: 'Premium', date: 'Jan 15, 2025', daysLeft: 32, amount: '$59' },
-];
-
-const failedPayments = [
-    { shop: 'Gadget Galaxy', package: 'Enterprise', date: 'Dec 10, 2024', amount: '$99', attempts: 3 },
-    { shop: 'Coffee Corner', package: 'Basic', date: 'Dec 8, 2024', amount: '$9', attempts: 2 },
-];
+// Empty initial data - will be populated from API
+const initialPackages = [];
+const subscriptions = [];
+const upcomingRenewals = [];
+const failedPayments = [];
 
 // Package Modal Component
 function PackageModal({ isOpen, onClose, onSave, editPackage }) {
@@ -227,10 +180,56 @@ function DeleteModal({ isOpen, onClose, onConfirm, packageName }) {
 }
 
 export default function SubscriptionsPage() {
+    const router = useRouter();
     const [packages, setPackages] = useState(initialPackages);
+    const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPackage, setEditingPackage] = useState(null);
     const [deleteModal, setDeleteModal] = useState({ isOpen: false, package: null });
+
+    useEffect(() => {
+        // Check authentication
+        const token = getToken();
+        if (!token) {
+            router.push('/login');
+            return;
+        }
+
+        // Fetch subscriptions from API
+        fetchSubscriptions();
+    }, [router]);
+
+    const fetchSubscriptions = async () => {
+        setLoading(true);
+        try {
+            const response = await getSubscriptionsList();
+            if (response && response.data) {
+                // Transform API data to match our package structure
+                const apiPackages = response.data.map((sub, index) => ({
+                    id: sub.id || index + 1,
+                    name: sub.name || sub.package_name || `Package ${index + 1}`,
+                    price: sub.price || sub.amount || 0,
+                    features: {
+                        users: sub.users || sub.max_users || 'N/A',
+                        products: sub.products || sub.max_products || 'N/A',
+                        invoices: sub.invoices || sub.max_invoices || 'N/A',
+                        reporting: sub.reporting || sub.report_type || 'Basic',
+                    },
+                    subscribers: sub.subscribers || sub.subscriber_count || 0,
+                    popular: sub.popular || false,
+                    enterprise: sub.enterprise || sub.is_enterprise || false,
+                }));
+                if (apiPackages.length > 0) {
+                    setPackages(apiPackages);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to fetch subscriptions:', err);
+            // Keep using initial packages as fallback
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleCreatePackage = () => {
         setEditingPackage(null);
@@ -296,6 +295,20 @@ export default function SubscriptionsPage() {
         { header: 'Status', render: (row) => <StatusBadge status={row.status} /> },
         { header: 'Actions', render: () => <button className="text-[#673DE6] hover:underline text-sm font-medium">Manage</button> },
     ];
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="flex items-center gap-3">
+                    <svg className="animate-spin w-8 h-8 text-[#673DE6]" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span className="text-gray-600">Loading subscriptions...</span>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">

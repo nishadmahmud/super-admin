@@ -1,16 +1,14 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import StatsCard from '../components/StatsCard';
 import StatusBadge from '../components/StatusBadge';
 import DataTable from '../components/DataTable';
+import { getToken } from '../lib/api';
 
-// Ticket data
-const tickets = [
-    { id: 'TKT-001', subject: 'Payment gateway not working', shop: 'TechMart Electronics', priority: 'high', status: 'open', created: '2 hours ago' },
-    { id: 'TKT-002', subject: 'Cannot add new products', shop: 'Fashion Hub', priority: 'medium', status: 'open', created: '5 hours ago' },
-    { id: 'TKT-003', subject: 'Report generation error', shop: 'Green Grocers', priority: 'low', status: 'pending', created: '1 day ago' },
-    { id: 'TKT-004', subject: 'Need to upgrade plan', shop: 'Book Haven', priority: 'medium', status: 'resolved', created: '2 days ago' },
-    { id: 'TKT-005', subject: 'Invoice template customization', shop: 'Sports Zone', priority: 'low', status: 'resolved', created: '3 days ago' },
-    { id: 'TKT-006', subject: 'User access issue', shop: 'Gadget Galaxy', priority: 'high', status: 'open', created: '4 hours ago' },
-];
+// Empty data - will be populated from API when available
+const tickets = [];
 
 const ticketColumns = [
     { header: 'Ticket ID', accessor: 'id' },
@@ -28,13 +26,51 @@ const ticketColumns = [
 ];
 
 export default function SupportPage() {
+    const router = useRouter();
+    const [loading, setLoading] = useState(true);
+    const [ticketStats, setTicketStats] = useState({
+        open: 0,
+        inProgress: 0,
+        resolved: 0,
+        unresolved: 0,
+    });
+    const [ticketList, setTicketList] = useState([]);
+    const [priorityBreakdown, setPriorityBreakdown] = useState({ high: 0, medium: 0, low: 0 });
+    const [unresolvedByShop, setUnresolvedByShop] = useState([]);
+
+    useEffect(() => {
+        // Check authentication
+        const token = getToken();
+        if (!token) {
+            router.push('/login');
+            return;
+        }
+
+        // TODO: Fetch support data from API when endpoint is available
+        setLoading(false);
+    }, [router]);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="flex items-center gap-3">
+                    <svg className="animate-spin w-8 h-8 text-[#673DE6]" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span className="text-gray-600">Loading support data...</span>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatsCard
                     title="Open Tickets"
-                    value="12"
+                    value={ticketStats.open.toString()}
                     color="blue"
                     icon={
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -44,7 +80,7 @@ export default function SupportPage() {
                 />
                 <StatsCard
                     title="In Progress"
-                    value="5"
+                    value={ticketStats.inProgress.toString()}
                     color="yellow"
                     icon={
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -54,7 +90,7 @@ export default function SupportPage() {
                 />
                 <StatsCard
                     title="Resolved"
-                    value="89"
+                    value={ticketStats.resolved.toString()}
                     color="green"
                     icon={
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -64,7 +100,7 @@ export default function SupportPage() {
                 />
                 <StatsCard
                     title="Unresolved"
-                    value="3"
+                    value={ticketStats.unresolved.toString()}
                     color="red"
                     icon={
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,7 +153,7 @@ export default function SupportPage() {
                         </div>
                     </div>
                 </div>
-                <DataTable columns={ticketColumns} data={tickets} />
+                <DataTable columns={ticketColumns} data={ticketList} />
             </div>
 
             {/* Additional Info Grid */}
@@ -129,50 +165,52 @@ export default function SupportPage() {
                         <div className="flex items-center gap-4">
                             <div className="w-20 text-sm font-medium text-red-600">High</div>
                             <div className="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-red-500 rounded-full" style={{ width: '25%' }}></div>
+                                <div className="h-full bg-red-500 rounded-full" style={{ width: priorityBreakdown.high > 0 ? `${(priorityBreakdown.high / (priorityBreakdown.high + priorityBreakdown.medium + priorityBreakdown.low)) * 100}%` : '0%' }}></div>
                             </div>
-                            <span className="text-sm font-medium text-gray-700">3</span>
+                            <span className="text-sm font-medium text-gray-700">{priorityBreakdown.high}</span>
                         </div>
                         <div className="flex items-center gap-4">
                             <div className="w-20 text-sm font-medium text-amber-600">Medium</div>
                             <div className="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-amber-500 rounded-full" style={{ width: '42%' }}></div>
+                                <div className="h-full bg-amber-500 rounded-full" style={{ width: priorityBreakdown.medium > 0 ? `${(priorityBreakdown.medium / (priorityBreakdown.high + priorityBreakdown.medium + priorityBreakdown.low)) * 100}%` : '0%' }}></div>
                             </div>
-                            <span className="text-sm font-medium text-gray-700">5</span>
+                            <span className="text-sm font-medium text-gray-700">{priorityBreakdown.medium}</span>
                         </div>
                         <div className="flex items-center gap-4">
                             <div className="w-20 text-sm font-medium text-blue-600">Low</div>
                             <div className="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-blue-500 rounded-full" style={{ width: '33%' }}></div>
+                                <div className="h-full bg-blue-500 rounded-full" style={{ width: priorityBreakdown.low > 0 ? `${(priorityBreakdown.low / (priorityBreakdown.high + priorityBreakdown.medium + priorityBreakdown.low)) * 100}%` : '0%' }}></div>
                             </div>
-                            <span className="text-sm font-medium text-gray-700">4</span>
+                            <span className="text-sm font-medium text-gray-700">{priorityBreakdown.low}</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Unresolved by Tenant */}
+                {/* Unresolved by Shop */}
                 <div className="card p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Unresolved Issues by Shop</h3>
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                                    <span className="text-red-600 font-bold text-sm">2</span>
-                                </div>
-                                <span className="font-medium text-gray-900">TechMart Electronics</span>
-                            </div>
-                            <StatusBadge status="high" />
+                    {unresolvedByShop.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                            <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p>No unresolved issues</p>
                         </div>
-                        <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-100">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
-                                    <span className="text-amber-600 font-bold text-sm">1</span>
+                    ) : (
+                        <div className="space-y-3">
+                            {unresolvedByShop.map((item, idx) => (
+                                <div key={idx} className={`flex items-center justify-between p-3 rounded-lg border ${item.priority === 'high' ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'}`}>
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${item.priority === 'high' ? 'bg-red-100' : 'bg-amber-100'}`}>
+                                            <span className={`font-bold text-sm ${item.priority === 'high' ? 'text-red-600' : 'text-amber-600'}`}>{item.count}</span>
+                                        </div>
+                                        <span className="font-medium text-gray-900">{item.shop}</span>
+                                    </div>
+                                    <StatusBadge status={item.priority} />
                                 </div>
-                                <span className="font-medium text-gray-900">Fashion Hub</span>
-                            </div>
-                            <StatusBadge status="medium" />
+                            ))}
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>

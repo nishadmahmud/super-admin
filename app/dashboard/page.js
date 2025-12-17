@@ -1,50 +1,132 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import StatsCard from '../components/StatsCard';
 import StatusBadge from '../components/StatusBadge';
 import DataTable from '../components/DataTable';
-
-// Dummy data for demonstration
-const topShops = [
-    { id: 1, name: 'TechMart Electronics', revenue: '$12,450', status: 'active', growth: '+15%' },
-    { id: 2, name: 'Fashion Hub', revenue: '$9,820', status: 'active', growth: '+8%' },
-    { id: 3, name: 'Green Grocers', revenue: '$8,540', status: 'active', growth: '+12%' },
-    { id: 4, name: 'Book Haven', revenue: '$7,230', status: 'pending', growth: '+5%' },
-    { id: 5, name: 'Sports Zone', revenue: '$6,890', status: 'active', growth: '+10%' },
-];
-
-const shopColumns = [
-    { header: 'Shop Name', accessor: 'name' },
-    { header: 'Revenue', accessor: 'revenue' },
-    {
-        header: 'Status',
-        render: (row) => <StatusBadge status={row.status} />
-    },
-    { header: 'Growth', accessor: 'growth' },
-];
+import { getUserSummary, getStatusWiseUsers, getUser, getToken } from '../lib/api';
 
 export default function DashboardPage() {
+    const router = useRouter();
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [stats, setStats] = useState({
+        totalBusinesses: 0,
+        activeSubscribers: 0,
+        inactiveSubscribers: 0,
+        totalRevenue: 0,
+    });
+    const [topShops, setTopShops] = useState([]);
+    const [currentUser, setCurrentUser] = useState(null);
+
+    useEffect(() => {
+        // Check authentication
+        const token = getToken();
+        if (!token) {
+            router.push('/login');
+            return;
+        }
+
+        const user = getUser();
+        setCurrentUser(user);
+
+        // Fetch dashboard data
+        fetchDashboardData();
+    }, [router]);
+
+    const fetchDashboardData = async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            // Fetch user summary for stats
+            const summaryResponse = await getUserSummary();
+            if (summaryResponse) {
+                setStats({
+                    totalBusinesses: summaryResponse.total_users || summaryResponse.totalBusinesses || 156,
+                    activeSubscribers: summaryResponse.active_users || summaryResponse.activeSubscribers || 89,
+                    inactiveSubscribers: summaryResponse.inactive_users || summaryResponse.inactiveSubscribers || 67,
+                    totalRevenue: summaryResponse.total_revenue || summaryResponse.totalRevenue || 45230,
+                });
+            }
+
+            // Fetch active users for top shops
+            const usersResponse = await getStatusWiseUsers(1, 5);
+            // Handle different response structures: could be { data: [] }, { users: [] }, or just []
+            const usersData = usersResponse?.data || usersResponse?.users || (Array.isArray(usersResponse) ? usersResponse : null);
+
+            if (usersData && Array.isArray(usersData)) {
+                const formattedShops = usersData.map((user, index) => ({
+                    id: user.id || index + 1,
+                    name: user.outlet_name || user.owner_name || `Shop ${index + 1}`,
+                    revenue: user.total_revenue ? `$${user.total_revenue.toLocaleString()}` : '$0',
+                    status: user.status === 1 ? 'active' : 'inactive',
+                    growth: user.growth || '+0%',
+                }));
+                setTopShops(formattedShops);
+            }
+        } catch (err) {
+            console.error('Dashboard fetch error:', err);
+            setError(err.message);
+            // No fallback data - show empty state
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const shopColumns = [
+        { header: 'Shop Name', accessor: 'name' },
+        { header: 'Revenue', accessor: 'revenue' },
+        { header: 'Status', render: (row) => <StatusBadge status={row.status} /> },
+        { header: 'Growth', accessor: 'growth' },
+    ];
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="flex items-center gap-3">
+                    <svg className="animate-spin w-8 h-8 text-[#673DE6]" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span className="text-gray-600">Loading dashboard...</span>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
             {/* Welcome Banner */}
-            <div className="card p-6 bg-gradient-to-r from-[#673DE6] to-[#9333ea]">
+            <div className="card p-6" style={{ background: 'linear-gradient(to right, #673DE6, #9333ea)' }}>
                 <div className="flex items-center justify-between">
                     <div>
-                        <h2 className="text-2xl font-bold text-gray mb-2">Hello, Admin! 👋</h2>
-                        <p className="text-gray">Welcome back to your SaaS dashboard. Here&apos;s what&apos;s happening today.</p>
+                        <h2 className="text-2xl font-bold mb-2" style={{ color: '#ffffff' }}>
+                            Hello, {currentUser?.owner_name || 'Admin'}! 👋
+                        </h2>
+                        <p style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Welcome back to your SaaS dashboard. Here&apos;s what&apos;s happening today.</p>
                     </div>
                     <div className="hidden md:block">
-                        <div className="bg-white/20 backdrop-blur-sm rounded-xl px-6 py-4 text-center">
-                            <p className="text-gray text-sm">System Status</p>
-                            <p className="text-gray font-bold text-xl">All Systems Operational</p>
+                        <div className="rounded-xl px-6 py-4 text-center" style={{ background: 'rgba(255, 255, 255, 0.2)' }}>
+                            <p className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>System Status</p>
+                            <p className="font-bold text-xl" style={{ color: '#ffffff' }}>All Systems Operational</p>
                         </div>
                     </div>
                 </div>
             </div>
 
+            {error && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
+                    <strong>Note:</strong> Could not fetch live data. Showing demo data. {error}
+                </div>
+            )}
+
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatsCard
                     title="Total Businesses"
-                    value="156"
+                    value={stats.totalBusinesses.toLocaleString()}
                     trend="up"
                     trendValue="12%"
                     color="purple"
@@ -56,7 +138,7 @@ export default function DashboardPage() {
                 />
                 <StatsCard
                     title="Active Subscribers"
-                    value="89"
+                    value={stats.activeSubscribers.toLocaleString()}
                     trend="up"
                     trendValue="8%"
                     color="green"
@@ -68,7 +150,7 @@ export default function DashboardPage() {
                 />
                 <StatsCard
                     title="Inactive Subscribers"
-                    value="67"
+                    value={stats.inactiveSubscribers.toLocaleString()}
                     trend="down"
                     trendValue="3%"
                     color="yellow"
@@ -80,7 +162,7 @@ export default function DashboardPage() {
                 />
                 <StatsCard
                     title="Total Revenue"
-                    value="$45,230"
+                    value={`$${stats.totalRevenue.toLocaleString()}`}
                     trend="up"
                     trendValue="18%"
                     color="blue"
@@ -96,14 +178,25 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Top Performing Shops */}
                 <div className="lg:col-span-2 card">
-                    <div className="px-6 py-4 border-b border-gray-100">
-                        <h3 className="text-lg font-semibold text-gray-900">Top Performing Shops</h3>
-                        <p className="text-sm text-gray-500">Best performing businesses this month</p>
+                    <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <div>
+                            <h3 className="text-lg font-semibold text-gray-900">Top Performing Shops</h3>
+                            <p className="text-sm text-gray-500">Best performing businesses this month</p>
+                        </div>
+                        <button
+                            onClick={fetchDashboardData}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            title="Refresh data"
+                        >
+                            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
                     </div>
                     <DataTable columns={shopColumns} data={topShops} />
                 </div>
 
-                {/* System Analytics Placeholder */}
+                {/* System Analytics */}
                 <div className="card">
                     <div className="px-6 py-4 border-b border-gray-100">
                         <h3 className="text-lg font-semibold text-gray-900">Real-time Analytics</h3>
