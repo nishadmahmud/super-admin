@@ -42,12 +42,16 @@ export default function DashboardPage() {
         try {
             // Fetch user summary for stats
             const summaryResponse = await getUserSummary();
-            if (summaryResponse) {
+            console.log('User Summary Response:', summaryResponse); // Debug log
+
+            // API returns { data: { total, active, inactive } }
+            const summaryData = summaryResponse?.data || summaryResponse;
+            if (summaryData) {
                 setStats({
-                    totalBusinesses: summaryResponse.total_users || summaryResponse.totalBusinesses || 156,
-                    activeSubscribers: summaryResponse.active_users || summaryResponse.activeSubscribers || 89,
-                    inactiveSubscribers: summaryResponse.inactive_users || summaryResponse.inactiveSubscribers || 67,
-                    totalRevenue: summaryResponse.total_revenue || summaryResponse.totalRevenue || 45230,
+                    totalBusinesses: summaryData.total || summaryData.total_users || 0,
+                    activeSubscribers: summaryData.active || summaryData.active_users || 0,
+                    inactiveSubscribers: summaryData.inactive || summaryData.inactive_users || 0,
+                    totalRevenue: summaryData.total_revenue || summaryData.revenue || 0,
                 });
             }
 
