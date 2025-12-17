@@ -116,9 +116,9 @@ export async function getUserSummary() {
     });
 }
 
-// Get users by status (active=1, inactive=0)
-export async function getStatusWiseUsers(status = 1, limit = 10) {
-    return await apiRequest('/status-wise-users', {
+// Get users by status (active=1, inactive=0) with pagination
+export async function getStatusWiseUsers(status = 1, limit = 20, page = 1) {
+    return await apiRequest(`/status-wise-users?page=${page}`, {
         method: 'POST',
         body: JSON.stringify({ status, limit: String(limit) }),
     });
